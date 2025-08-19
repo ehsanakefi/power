@@ -1,0 +1,64 @@
+{
+  "name": "power-crm",
+  "version": "1.0.0",
+  "description": "CRM System for Power Distribution Company",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=packages/server",
+    "dev:server": "npm run dev --workspace=packages/server",
+    "dev:client": "npm run dev --workspace=packages/client",
+    "build": "npm run build --workspaces",
+    "build:server": "npm run build --workspace=packages/server",
+    "build:client": "npm run build --workspace=packages/client",
+    "start": "npm run start --workspace=packages/server",
+    "start:server": "npm run start --workspace=packages/server",
+    "start:client": "npm run start --workspace=packages/client",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "lint:fix": "npm run lint:fix --workspaces",
+    "clean": "rimraf packages/*/dist packages/*/node_modules node_modules",
+    "install:all": "npm install && npm install --workspaces",
+    "db:generate": "npm run db:generate --workspace=packages/server",
+    "db:push": "npm run db:push --workspace=packages/server",
+    "db:migrate": "npm run db:migrate --workspace=packages/server",
+    "db:studio": "npm run db:studio --workspace=packages/server",
+    "db:seed": "npm run db:seed --workspace=packages/server",
+    "db:reset": "npm run db:push --workspace=packages/server && npm run db:seed --workspace=packages/server",
+    "setup": "npm install && npm run db:generate && npm run db:push && npm run db:seed",
+    "postinstall": "npm run db:generate --workspace=packages/server"
+  },
+  "keywords": [
+    "crm",
+    "power-distribution",
+    "sms",
+    "customer-service",
+    "monorepo",
+    "typescript",
+    "express",
+    "nextjs",
+    "prisma",
+    "postgresql"
+  ],
+  "author": "Power Distribution Company",
+  "license": "MIT",
+  "devDependencies": {
+    "rimraf": "^5.0.1",
+    "concurrently": "^8.2.0",
+    "cross-env": "^7.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/power-crm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/power-crm/issues"
+  },
+  "homepage": "https://github.com/your-org/power-crm#readme"
+}

@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  phone     String    @unique
+  role      UserRole  @default(CLIENT)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tickets   Ticket[]
+
+  @@map("users")
+}
+
+model Ticket {
+  id          Int       @id @default(autoincrement())
+  title       String
+  content     String
+  status      String    @default("unseen")
+  authorId    Int
+  author      User      @relation(fields: [authorId], references: [id])
+  history     Log[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("tickets")
+}
+
+model Log {
+  id        Int       @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket    @relation(fields: [ticketId], references: [id])
+  before    Json      // وضعیت قبلی
+  after     Json      // وضعیت جدید
+  changes   Json      // تغییرات اعمال شده
+  user      String    // کاربری که تغییر را ایجاد کرده
+  createdAt DateTime  @default(now())
+
+  @@map("logs")
+}
+
+enum UserRole {
+  CLIENT
+  EMPLOYEE
+  MANAGER
+  ADMIN
+}

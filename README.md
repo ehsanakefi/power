@@ -72,22 +72,78 @@
 - PostgreSQL
 - NPM یا Yarn
 
-### نصب
+### نصب و راه‌اندازی Backend
 
 ```bash
 # کلون کردن repository
 git clone <repository-url>
-cd crm-project
+cd power
 
-# نصب dependencies
+# نصب dependencies (root workspace)
 npm install
 
-# راه‌اندازی دیتابیس
-npx prisma migrate dev
+# تنظیم متغیرهای محیطی
+cd packages/server
+cp .env.example .env
+# ویرایش .env با تنظیمات دیتابیس خود
 
-# اجرای پروژه در حالت development
+# راه‌اندازی دیتابیس
+npm run db:push
+npm run db:seed
+
+# اجرای سرور در حالت development
 npm run dev
+
+# یا از root directory
+cd ../..
+npm run dev:server
 ```
+
+### تست API
+
+پس از راه‌اندازی سرور:
+
+```bash
+# تست health check
+curl http://localhost:3001/health
+
+# تست ورود با کاربر تست
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "09123456789"}'
+```
+
+### کاربران تست (پس از seed)
+
+- **Admin**: `09123456789`
+- **Manager**: `09123456788`  
+- **Employee**: `09123456787`
+- **Client**: `09123456786`
+
+کد تأیید development: `1234`
+
+### وضعیت فعلی پروژه
+
+✅ **Backend (مکمل)**
+- Express.js API server با TypeScript
+- Authentication با JWT و Passport.js
+- پایگاه داده PostgreSQL با Prisma
+- مسیرهای احراز هویت کاملاً پیاده‌سازی شده
+- Middleware امنیتی و Rate limiting
+- Database schema و seeding
+
+⏳ **Frontend (در حال توسعه)**
+- Next.js application (هنوز ایجاد نشده)
+
+### مسیرهای API آماده
+
+- `POST /api/auth/login` - ورود با شماره موبایل
+- `POST /api/auth/verify` - تأیید کد پیامکی
+- `GET /api/auth/profile` - پروفایل کاربر (محافظت شده)
+- `GET /api/auth/me` - اطلاعات کاربر فعلی
+- `POST /api/auth/refresh` - تجدید توکن
+- `POST /api/auth/logout` - خروج
+- `GET /health` - بررسی وضعیت سرور
 
 ## 📚 مستندات
 

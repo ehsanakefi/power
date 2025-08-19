@@ -10,12 +10,14 @@
     "dev": "npm run dev --workspace=packages/server",
     "dev:server": "npm run dev --workspace=packages/server",
     "dev:client": "npm run dev --workspace=packages/client",
+    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build": "npm run build --workspaces",
     "build:server": "npm run build --workspace=packages/server",
     "build:client": "npm run build --workspace=packages/client",
     "start": "npm run start --workspace=packages/server",
     "start:server": "npm run start --workspace=packages/server",
     "start:client": "npm run start --workspace=packages/client",
+    "start:all": "concurrently \"npm run start:server\" \"npm run start:client\"",
     "test": "npm run test --workspaces",
     "lint": "npm run lint --workspaces",
     "lint:fix": "npm run lint:fix --workspaces",
@@ -28,6 +30,7 @@
     "db:seed": "npm run db:seed --workspace=packages/server",
     "db:reset": "npm run db:push --workspace=packages/server && npm run db:seed --workspace=packages/server",
     "setup": "npm install && npm run db:generate && npm run db:push && npm run db:seed",
+    "setup:client": "npm install --workspace=packages/client && npm run build:client",
     "postinstall": "npm run db:generate --workspace=packages/server"
   },
   "keywords": [

@@ -7,6 +7,7 @@ import { env, isDevelopment } from './config/env';
 import { prisma } from './config/database';
 import passport from './config/passport';
 import authRoutes from './routes/auth';
+import ticketRoutes from './routes/tickets';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 // Create Express application
@@ -95,18 +96,24 @@ app.get('/api', (req, res) => {
     version: '1.0.0',
     documentation: '/api/docs',
     endpoints: {
-      auth: '/api/auth',
-      tickets: '/api/tickets',
-      users: '/api/users',
+      auth: {
+        base: '/api/auth',
+        routes: ['POST /login', 'POST /verify', 'GET /profile', 'POST /refresh', 'POST /logout', 'GET /me']
+      },
+      tickets: {
+        base: '/api/tickets',
+        routes: ['GET /', 'POST /', 'GET /:id', 'PUT /:id', 'PUT /:id/status', 'DELETE /:id', 'GET /:id/history', 'GET /stats']
+      },
+      users: '/api/users (coming soon)',
     },
   });
 });
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/tickets', ticketRoutes);
 
 // Future routes (placeholders)
-// app.use('/api/tickets', ticketRoutes);
 // app.use('/api/users', userRoutes);
 
 // Handle 404 for unknown routes

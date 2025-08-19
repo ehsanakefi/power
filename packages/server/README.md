@@ -148,6 +148,238 @@ Authorization: Bearer <token>
 }
 ```
 
+### Ticket Management Endpoints
+
+#### POST `/tickets`
+Create a new ticket (authenticated users only)
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Request:**
+```json
+{
+  "title": "Power outage in industrial area",
+  "content": "There has been a power outage in the industrial area since 8 AM. Please investigate."
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket created successfully",
+  "data": {
+    "ticket": {
+      "id": 1,
+      "title": "Power outage in industrial area",
+      "content": "There has been a power outage...",
+      "status": "unseen",
+      "authorId": 1,
+      "author": {
+        "id": 1,
+        "phone": "09123456789",
+        "role": "CLIENT"
+      },
+      "createdAt": "2023-10-01T12:00:00Z",
+      "updatedAt": "2023-10-01T12:00:00Z"
+    }
+  }
+}
+```
+
+#### GET `/tickets`
+Get tickets list with pagination and filtering
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10, max: 100)
+- `sortBy` (optional): Sort field (createdAt, updatedAt, title, status)
+- `sortOrder` (optional): Sort order (asc, desc)
+- `status` (optional): Filter by status
+- `authorId` (optional): Filter by author (employees+ only)
+- `search` (optional): Search in title and content
+- `dateFrom` (optional): Filter from date
+- `dateTo` (optional): Filter to date
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Tickets retrieved successfully",
+  "data": {
+    "tickets": [...],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "totalPages": 3,
+      "hasNext": true,
+      "hasPrev": false
+    }
+  }
+}
+```
+
+#### GET `/tickets/:id`
+Get a specific ticket by ID
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket retrieved successfully",
+  "data": {
+    "ticket": {
+      "id": 1,
+      "title": "Power outage in industrial area",
+      "content": "There has been a power outage...",
+      "status": "in_progress",
+      "authorId": 1,
+      "author": {
+        "id": 1,
+        "phone": "09123456789",
+        "role": "CLIENT"
+      },
+      "createdAt": "2023-10-01T12:00:00Z",
+      "updatedAt": "2023-10-01T12:30:00Z"
+    }
+  }
+}
+```
+
+#### PUT `/tickets/:id/status`
+Update ticket status (role-based permissions)
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Request:**
+```json
+{
+  "status": "in_progress"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket status updated successfully",
+  "data": {
+    "ticket": {
+      "id": 1,
+      "status": "in_progress",
+      ...
+    }
+  }
+}
+```
+
+#### PUT `/tickets/:id`
+Update ticket content (title, description)
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Request:**
+```json
+{
+  "title": "Updated ticket title",
+  "content": "Updated ticket content"
+}
+```
+
+#### GET `/tickets/:id/history`
+Get ticket history/change logs
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket history retrieved successfully",
+  "data": {
+    "history": [
+      {
+        "id": 1,
+        "ticketId": 1,
+        "before": {"status": "unseen"},
+        "after": {"status": "in_progress"},
+        "changes": {
+          "action": "status_changed",
+          "from": "unseen",
+          "to": "in_progress"
+        },
+        "user": "User:2",
+        "createdAt": "2023-10-01T12:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+#### GET `/tickets/stats`
+Get ticket statistics
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket statistics retrieved successfully",
+  "data": {
+    "stats": {
+      "total": 25,
+      "unseen": 5,
+      "inProgress": 8,
+      "resolved": 10,
+      "closed": 2
+    }
+  }
+}
+```
+
+#### DELETE `/tickets/:id`
+Delete a ticket (admin/manager only)
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket deleted successfully"
+}
+```
+
 ### Health Check
 
 #### GET `/health`
@@ -175,9 +407,24 @@ Authorization: Bearer <your-jwt-token>
 ### User Roles
 
 - **CLIENT**: Regular customers who can create and view their own tickets
-- **EMPLOYEE**: Staff members who can view and update tickets
-- **MANAGER**: Managers who can manage tickets and view reports
-- **ADMIN**: Full system access
+- **EMPLOYEE**: Staff members who can view and update all tickets, change status
+- **MANAGER**: Managers who can manage all tickets, delete tickets, and view reports
+- **ADMIN**: Full system access including user management
+
+### Ticket Status Flow
+
+Tickets can have the following statuses with role-based transitions:
+
+- **unseen**: New ticket (default)
+- **in_progress**: Being worked on
+- **resolved**: Solution provided
+- **closed**: Completely finished
+- **rejected**: Cannot be processed
+
+**Status Transitions by Role:**
+- **Clients**: Can only create tickets (unseen status)
+- **Employees**: unseen → in_progress → resolved
+- **Managers/Admins**: Can transition between any statuses
 
 ## 🗄️ Database Schema
 
@@ -215,7 +462,8 @@ After running `npm run db:seed`, you can use these test accounts:
 - **Admin**: `09123456789`
 - **Manager**: `09123456788`
 - **Employee**: `09123456787`
-- **Client**: `09123456786`
+- **Client 1**: `09123456786`
+- **Client 2**: `09123456785`
 
 Use verification code `1234` for development.
 
@@ -232,6 +480,22 @@ curl -X POST http://localhost:3001/api/auth/login \
 # Get profile (replace <token> with actual token)
 curl -X GET http://localhost:3001/api/auth/profile \
   -H "Authorization: Bearer <token>"
+
+# Create a ticket
+curl -X POST http://localhost:3001/api/tickets \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"title": "Test Ticket", "content": "This is a test ticket"}'
+
+# Get tickets list
+curl -X GET http://localhost:3001/api/tickets \
+  -H "Authorization: Bearer <token>"
+
+# Update ticket status (employees+)
+curl -X PUT http://localhost:3001/api/tickets/1/status \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"status": "in_progress"}'
 ```
 
 ## 🔧 Configuration

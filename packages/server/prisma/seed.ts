@@ -54,7 +54,19 @@ async function main() {
 
     console.log('✅ Created client user:', clientUser);
 
-    // Create sample tickets
+    // Create additional test clients
+    const client2 = await prisma.user.upsert({
+      where: { phone: '09123456785' },
+      update: {},
+      create: {
+        phone: '09123456785',
+        role: UserRole.CLIENT,
+      },
+    });
+
+    console.log('✅ Created second client user:', client2);
+
+    // Create sample tickets with more variety
     const sampleTickets = [
       {
         title: 'قطعی برق در منطقه شهرک صنعتی',
@@ -73,6 +85,30 @@ async function main() {
         content: 'برای منزل جدید احداثی نیاز به نصب کنتور برق داریم.',
         status: 'resolved',
         authorId: clientUser.id,
+      },
+      {
+        title: 'نوسان ولتاژ برق',
+        content: 'در خانه ما نوسان ولتاژ زیادی وجود دارد که باعث خرابی لوازم برقی می‌شود.',
+        status: 'unseen',
+        authorId: client2.id,
+      },
+      {
+        title: 'درخواست تعمیر کابل برق',
+        content: 'کابل برق خیابان ما آسیب دیده و نیاز به تعمیر فوری دارد.',
+        status: 'in_progress',
+        authorId: client2.id,
+      },
+      {
+        title: 'شکایت از قبض برق',
+        content: 'قبض برق این ماه بیش از حد معمول است و درخواست بررسی دارم.',
+        status: 'closed',
+        authorId: clientUser.id,
+      },
+      {
+        title: 'مشکل روشنایی معابر',
+        content: 'چراغ‌های خیابان محله ما خاموش هستند و ایمنی را تهدید می‌کند.',
+        status: 'rejected',
+        authorId: client2.id,
       },
     ];
 
@@ -103,7 +139,12 @@ async function main() {
         },
       });
 
-      // If ticket is in progress or resolved, add status change logs
+      // Add realistic status progression with timestamps
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
       if (ticket.status === 'in_progress') {
         await prisma.log.create({
           data: {
@@ -114,13 +155,52 @@ async function main() {
               action: 'status_changed',
               from: 'unseen',
               to: 'in_progress',
+              note: 'تیکت در حال بررسی است',
             },
             user: `User:${employeeUser.id}`,
+            createdAt: oneHourAgo,
           },
         });
       }
 
       if (ticket.status === 'resolved') {
+        // First change to in_progress
+        await prisma.log.create({
+          data: {
+            ticketId: ticket.id,
+            before: { status: 'unseen' },
+            after: { status: 'in_progress' },
+            changes: {
+              action: 'status_changed',
+              from: 'unseen',
+              to: 'in_progress',
+              note: 'شروع بررسی درخواست',
+            },
+            user: `User:${employeeUser.id}`,
+            createdAt: twoHoursAgo,
+          },
+        });
+
+        // Then resolve
+        await prisma.log.create({
+          data: {
+            ticketId: ticket.id,
+            before: { status: 'in_progress' },
+            after: { status: 'resolved' },
+            changes: {
+              action: 'status_changed',
+              from: 'in_progress',
+              to: 'resolved',
+              resolution: 'مشکل با موفقیت برطرف شد',
+            },
+            user: `User:${managerUser.id}`,
+            createdAt: oneHourAgo,
+          },
+        });
+      }
+
+      if (ticket.status === 'closed') {
+        // Progress through all statuses
         await prisma.log.create({
           data: {
             ticketId: ticket.id,
@@ -132,6 +212,7 @@ async function main() {
               to: 'in_progress',
             },
             user: `User:${employeeUser.id}`,
+            createdAt: oneDayAgo,
           },
         });
 
@@ -144,9 +225,44 @@ async function main() {
               action: 'status_changed',
               from: 'in_progress',
               to: 'resolved',
-              resolution: 'مشکل برطرف شد',
+              resolution: 'مشکل حل شد',
+            },
+            user: `User:${employeeUser.id}`,
+            createdAt: twoHoursAgo,
+          },
+        });
+
+        await prisma.log.create({
+          data: {
+            ticketId: ticket.id,
+            before: { status: 'resolved' },
+            after: { status: 'closed' },
+            changes: {
+              action: 'status_changed',
+              from: 'resolved',
+              to: 'closed',
+              note: 'تیکت بسته شد',
             },
             user: `User:${managerUser.id}`,
+            createdAt: oneHourAgo,
+          },
+        });
+      }
+
+      if (ticket.status === 'rejected') {
+        await prisma.log.create({
+          data: {
+            ticketId: ticket.id,
+            before: { status: 'unseen' },
+            after: { status: 'rejected' },
+            changes: {
+              action: 'status_changed',
+              from: 'unseen',
+              to: 'rejected',
+              reason: 'درخواست خارج از حوزه وظایف شرکت',
+            },
+            user: `User:${managerUser.id}`,
+            createdAt: oneHourAgo,
           },
         });
       }
@@ -157,9 +273,23 @@ async function main() {
     console.log('Admin: 09123456789');
     console.log('Manager: 09123456788');
     console.log('Employee: 09123456787');
-    console.log('Client: 09123456786');
+    console.log('Client 1: 09123456786');
+    console.log('Client 2: 09123456785');
     console.log('\n🔐 Use any of these phone numbers to login');
     console.log('💡 Verification code: 1234 (development only)');
+    console.log('\n🎫 Sample tickets created with various statuses:');
+    console.log('- 2 unseen tickets');
+    console.log('- 2 in_progress tickets');
+    console.log('- 1 resolved ticket');
+    console.log('- 1 closed ticket');
+    console.log('- 1 rejected ticket');
+    console.log('\n🔗 API endpoints to test:');
+    console.log('GET /api/tickets - Get all tickets (role-based)');
+    console.log('POST /api/tickets - Create new ticket');
+    console.log('GET /api/tickets/:id - Get specific ticket');
+    console.log('PUT /api/tickets/:id/status - Update ticket status');
+    console.log('GET /api/tickets/:id/history - Get ticket history');
+    console.log('GET /api/tickets/stats - Get ticket statistics');
 
   } catch (error) {
     console.error('❌ Error seeding database:', error);

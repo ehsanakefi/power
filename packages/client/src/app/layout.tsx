@@ -3,6 +3,7 @@ import { Inter, Vazirmatn } from 'next/font/google';
 import './globals.css';
 import ThemeRegistry from '@/theme/ThemeRegistry';
 import { QueryProvider } from '@/lib/queryClient';
+import { AuthProvider } from '@/providers/AuthProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 const vazirmatn = Vazirmatn({
@@ -16,10 +17,14 @@ export const metadata: Metadata = {
   description: 'سیستم جامع مدیریت ارتباط با مشتری شرکت توزیع برق',
   keywords: ['CRM', 'Power Distribution', 'Customer Management', 'شرکت توزیع برق'],
   authors: [{ name: 'Power Distribution Company' }],
-  viewport: 'width=device-width, initial-scale=1',
   icons: {
     icon: '/favicon.ico',
   },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -38,7 +43,9 @@ export default function RootLayout({
       <body className={`${vazirmatn.className} ${inter.className}`}>
         <ThemeRegistry>
           <QueryProvider>
-            {children}
+            <AuthProvider>
+              {children}
+            </AuthProvider>
           </QueryProvider>
         </ThemeRegistry>
       </body>

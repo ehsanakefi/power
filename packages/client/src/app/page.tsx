@@ -22,18 +22,26 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
 } from '@mui/icons-material';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore } from '@/store/auth.store';
+import LoadingScreen from '@/components/ui/LoadingScreen';
+import { useAuthContext } from '@/providers/AuthProvider';
 
 export default function HomePage() {
   const { user, isAuthenticated } = useAuthStore();
+  const { isInitialized } = useAuthContext();
 
   const handleLogin = () => {
-    window.location.href = '/auth/login';
+    window.location.href = '/login';
   };
 
   const handleDashboard = () => {
     window.location.href = '/dashboard';
   };
+
+  // Show loading screen while initializing authentication
+  if (!isInitialized) {
+    return <LoadingScreen message="Initializing..." />;
+  }
 
   if (isAuthenticated && user) {
     return (

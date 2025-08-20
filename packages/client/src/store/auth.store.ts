@@ -62,9 +62,16 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => {
-        // Call logout API (optional, don't await to avoid blocking logout)
-        api.auth.logout().catch(console.error);
+      logout: async () => {
+        set({ isLoading: true, error: null });
+
+        try {
+          // Call logout API (optional)
+          await api.auth.logout();
+        } catch (error) {
+          console.error('Logout API error:', error);
+          // Continue with logout even if API call fails
+        }
 
         // Clear local storage and state
         removeAuthToken();

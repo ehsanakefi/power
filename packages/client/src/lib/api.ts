@@ -238,6 +238,22 @@ export const getAuthToken = (): string | null => {
   return null;
 };
 
+// Standalone ticket functions for React Query
+export const getTickets = async (params?: {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  status?: string;
+  authorId?: number;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) => {
+  const response = await api.tickets.getAll(params);
+  return response.data;
+};
+
 // Error handling utility
 export const handleApiError = (error: any) => {
   if (error.response?.data?.message) {

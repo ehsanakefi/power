@@ -1,14 +1,14 @@
 import jwt from 'jsonwebtoken';
 import { prisma } from '@/config/database';
 import { env } from '@/config/env';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserRoleType } from '@/constants/userRoles';
 import { JwtPayload } from '@/config/passport';
 
 export interface LoginResult {
   user: {
     id: number;
     phone: string;
-    role: UserRole;
+    role: UserRoleType;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -17,7 +17,7 @@ export interface LoginResult {
 
 export interface CreateUserData {
   phone: string;
-  role?: UserRole;
+  role?: UserRoleType;
 }
 
 export class AuthService {
@@ -25,7 +25,7 @@ export class AuthService {
    * Find or create user by phone number
    * This is used for SMS-based authentication where users are created automatically
    */
-  static async findOrCreateUserByPhone(phone: string, role: UserRole = UserRole.CLIENT): Promise<LoginResult> {
+  static async findOrCreateUserByPhone(phone: string, role: UserRoleType = UserRole.CLIENT): Promise<LoginResult> {
     try {
       // Normalize phone number (remove spaces, dashes, etc.)
       const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
@@ -60,10 +60,10 @@ export class AuthService {
       }
 
       // Generate JWT token
-      const token = this.generateToken(user);
+      const token = this.generateToken(user as { id: number; phone: string; role: UserRoleType });
 
       return {
-        user,
+        user: user as { id: number; phone: string; role: UserRoleType; createdAt: Date; updatedAt: Date },
         token,
       };
     } catch (error) {
@@ -116,7 +116,7 @@ export class AuthService {
   /**
    * Generate JWT token for user
    */
-  static generateToken(user: { id: number; phone: string; role: UserRole }): string {
+  static generateToken(user: { id: number; phone: string; role: UserRoleType }): string {
     const payload: JwtPayload = {
       id: user.id,
       phone: user.phone,
@@ -154,7 +154,7 @@ export class AuthService {
         throw new Error('User not found');
       }
 
-      return this.generateToken(user);
+      return this.generateToken(user as { id: number; phone: string; role: UserRoleType });
     } catch (error) {
       throw new Error(`Failed to refresh token: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -163,7 +163,7 @@ export class AuthService {
   /**
    * Update user role (admin only)
    */
-  static async updateUserRole(userId: number, newRole: UserRole) {
+  static async updateUserRole(userId: number, newRole: UserRoleType) {
     try {
       return await prisma.user.update({
         where: { id: userId },

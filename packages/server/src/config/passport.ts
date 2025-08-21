@@ -2,7 +2,8 @@ import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt, StrategyOptions } from 'passport-jwt';
 import { env } from './env';
 import { prisma } from './database';
-import { UserRole } from '@prisma/client';
+// Import UserRole constants
+import { UserRoleType } from '@/constants/userRoles';
 
 // JWT Strategy options
 const jwtOptions: StrategyOptions = {
@@ -15,7 +16,7 @@ const jwtOptions: StrategyOptions = {
 export interface JwtPayload {
   id: number;
   phone: string;
-  role: UserRole;
+  role: UserRoleType;
   iat?: number;
   exp?: number;
 }
@@ -24,7 +25,7 @@ export interface JwtPayload {
 export interface AuthenticatedUser {
   id: number;
   phone: string;
-  role: UserRole;
+  role: UserRoleType;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,7 +55,7 @@ passport.use(
         return done(null, false, { message: 'Token phone mismatch' });
       }
 
-      return done(null, user);
+      return done(null, user as AuthenticatedUser);
     } catch (error) {
       return done(error, false);
     }
@@ -79,7 +80,7 @@ passport.deserializeUser(async (id: number, done) => {
         updatedAt: true,
       },
     });
-    done(null, user);
+    done(null, user as AuthenticatedUser | null);
   } catch (error) {
     done(error, null);
   }

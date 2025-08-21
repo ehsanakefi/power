@@ -1,5 +1,5 @@
 import { prisma } from '@/config/database';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserRoleType } from '@/constants/userRoles';
 import { AuthenticatedUser } from '@/config/passport';
 
 export interface CreateTicketData {
@@ -22,7 +22,7 @@ export interface TicketWithAuthor {
   author: {
     id: number;
     phone: string;
-    role: UserRole;
+    role: UserRoleType;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -79,7 +79,7 @@ export class TicketService {
         status: ticket.status,
       }, `User:${ticket.authorId}`);
 
-      return ticket;
+      return ticket as TicketWithAuthor;
     } catch (error) {
       throw new Error(`Failed to create ticket: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -92,7 +92,7 @@ export class TicketService {
    */
   static async getTicketsForUser(
     userId: number,
-    userRole: UserRole,
+    userRole: UserRoleType,
     filters: TicketFilters = {},
     pagination: PaginationOptions = {}
   ) {
@@ -182,7 +182,7 @@ export class TicketService {
    * Get a specific ticket by ID
    * Ensures the user can access this ticket based on their role
    */
-  static async getTicketById(ticketId: number, userId: number, userRole: UserRole): Promise<TicketWithAuthor | null> {
+  static async getTicketById(ticketId: number, userId: number, userRole: UserRoleType): Promise<TicketWithAuthor | null> {
     try {
       const whereClause: any = { id: ticketId };
 
@@ -204,7 +204,7 @@ export class TicketService {
         },
       });
 
-      return ticket;
+      return ticket as TicketWithAuthor | null;
     } catch (error) {
       throw new Error(`Failed to fetch ticket: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -266,7 +266,7 @@ export class TicketService {
         `User:${user.id}`
       );
 
-      return updatedTicket;
+      return updatedTicket as TicketWithAuthor;
     } catch (error) {
       throw new Error(`Failed to update ticket status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -333,7 +333,7 @@ export class TicketService {
 
       await this.createLogEntry(ticketId, oldData, newData, changes, `User:${user.id}`);
 
-      return updatedTicket;
+      return updatedTicket as TicketWithAuthor;
     } catch (error) {
       throw new Error(`Failed to update ticket: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -342,7 +342,7 @@ export class TicketService {
   /**
    * Get ticket history (logs)
    */
-  static async getTicketHistory(ticketId: number, userId: number, userRole: UserRole) {
+  static async getTicketHistory(ticketId: number, userId: number, userRole: UserRoleType) {
     try {
       // First check if user can access this ticket
       const ticket = await this.getTicketById(ticketId, userId, userRole);
@@ -390,7 +390,7 @@ export class TicketService {
   /**
    * Get ticket statistics
    */
-  static async getTicketStats(userId?: number, userRole?: UserRole) {
+  static async getTicketStats(userId?: number, userRole?: UserRoleType) {
     try {
       const whereClause: any = {};
 
@@ -432,9 +432,9 @@ export class TicketService {
       await prisma.log.create({
         data: {
           ticketId,
-          before,
-          after,
-          changes,
+          before: JSON.stringify(before),
+          after: JSON.stringify(after),
+          changes: JSON.stringify(changes),
           user,
         },
       });
@@ -455,7 +455,7 @@ export class TicketService {
   /**
    * Get available status transitions based on current status and user role
    */
-  static getAvailableStatusTransitions(currentStatus: string, userRole: UserRole): string[] {
+  static getAvailableStatusTransitions(currentStatus: string, userRole: UserRoleType): string[] {
     const transitions: Record<string, Record<string, string[]>> = {
       unseen: {
         [UserRole.CLIENT]: [],

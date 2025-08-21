@@ -172,7 +172,7 @@ import { useHasRole } from '@/store/auth.store';
 
 function AdminContent() {
   const hasAdminRole = useHasRole(['ADMIN']);
-  
+
   if (!hasAdminRole) {
     return (
       <div>
@@ -352,9 +352,9 @@ import { useIsAdmin } from '@/store/auth.store';
 
 const AdminPanel = memo(() => {
   const isAdmin = useIsAdmin();
-  
+
   if (!isAdmin) return null;
-  
+
   return <div>Admin content</div>;
 });
 ```

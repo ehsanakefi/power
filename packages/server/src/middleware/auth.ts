@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import passport from '@/config/passport';
 import { AuthenticatedUser } from '@/config/passport';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserRoleType } from '@/constants/userRoles';
 
 // Extend Express Request interface to include user
 declare global {
@@ -41,7 +41,7 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
  * Role-based authorization middleware
  * Checks if authenticated user has required role
  */
-export const requireRole = (roles: UserRole | UserRole[]) => {
+export const requireRole = (roles: UserRoleType | UserRoleType[]) => {
   const allowedRoles = Array.isArray(roles) ? roles : [roles];
 
   return (req: Request, res: Response, next: NextFunction) => {

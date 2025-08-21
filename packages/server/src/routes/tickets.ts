@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { body, query, param, validationResult } from 'express-validator';
 import { TicketService } from '@/services/ticketService';
 import { authenticateJWT, requireRole, requireEmployee } from '@/middleware/auth';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '@/constants/userRoles';
 
 const router = Router();
 

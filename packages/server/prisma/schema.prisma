@@ -6,14 +6,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
   id        Int       @id @default(autoincrement())
   phone     String    @unique
-  role      UserRole  @default(CLIENT)
+  role      String    @default("CLIENT")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   tickets   Ticket[]
@@ -39,18 +39,14 @@ model Log {
   id        Int       @id @default(autoincrement())
   ticketId  Int
   ticket    Ticket    @relation(fields: [ticketId], references: [id])
-  before    Json      // وضعیت قبلی
-  after     Json      // وضعیت جدید
-  changes   Json      // تغییرات اعمال شده
+  before    String    // وضعیت قبلی
+  after     String    // وضعیت جدید
+  changes   String    // تغییرات اعمال شده
   user      String    // کاربری که تغییر را ایجاد کرده
   createdAt DateTime  @default(now())
 
   @@map("logs")
 }
 
-enum UserRole {
-  CLIENT
-  EMPLOYEE
-  MANAGER
-  ADMIN
-}
+// UserRole enum values: CLIENT, EMPLOYEE, MANAGER, ADMIN
+// Using String type instead of enum for SQLite compatibility

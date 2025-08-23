@@ -1,0 +1,528 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table users {
+  id Int [pk, increment]
+  phone String [unique, not null]
+  name String
+  email String [unique]
+  role String [not null, default: 'CLIENT']
+  status String [not null, default: 'ACTIVE']
+  profileImage String
+  department String
+  position String
+  employeeId String [unique]
+  nationalId String [unique]
+  passwordHash String
+  lastLoginAt DateTime
+  emailVerifiedAt DateTime
+  phoneVerifiedAt DateTime
+  twoFactorEnabled Boolean [not null, default: false]
+  managerId Int
+  manager users
+  subordinates users [not null]
+  metadata String
+  preferences String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  deletedAt DateTime
+  authoredTickets tickets [not null]
+  assignedTickets tickets [not null]
+  ticketComments ticket_comments [not null]
+  ticketActivities ticket_activities [not null]
+  notifications notifications [not null]
+  auditLogs audit_logs [not null]
+  sessions user_sessions [not null]
+  userLabels user_labels [not null]
+  userPermissions user_permissions [not null]
+  createdLabels labels [not null]
+  createdCategories categories [not null]
+  createdDepartments departments [not null]
+  departmentMemberships department_members [not null]
+  resolvedTickets tickets [not null]
+  uploadedAttachments ticket_attachments [not null]
+  escalationsFrom ticket_escalations [not null]
+  escalationsTo ticket_escalations [not null]
+  headedDepartments departments [not null]
+  addedTicketLabels ticket_labels [not null]
+  grantedPermissions user_permissions [not null]
+  updatedSettings system_settings [not null]
+  userMetrics user_metrics [not null]
+  authoredArticles knowledge_articles [not null]
+  reviewedArticles knowledge_articles [not null]
+}
+
+Table tickets {
+  id Int [pk, increment]
+  ticketNumber String [unique, not null]
+  title String [not null]
+  description String [not null]
+  status String [not null, default: 'OPEN']
+  priority String [not null, default: 'MEDIUM']
+  type String [not null, default: 'COMPLAINT']
+  source String [not null, default: 'PHONE']
+  authorId Int [not null]
+  author users [not null]
+  assigneeId Int
+  assignee users
+  categoryId Int
+  category categories
+  departmentId Int
+  department departments
+  customerName String
+  customerPhone String
+  customerEmail String
+  customerAddress String
+  customerArea String
+  meterNumber String
+  accountNumber String
+  resolution String
+  resolutionNotes String
+  resolvedAt DateTime
+  resolvedById Int
+  resolvedBy users
+  dueDate DateTime
+  estimatedHours Float
+  actualHours Float
+  firstResponseAt DateTime
+  metadata String
+  tags String [not null]
+  attachmentCount Int [not null, default: 0]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  deletedAt DateTime
+  comments ticket_comments [not null]
+  activities ticket_activities [not null]
+  labels ticket_labels [not null]
+  attachments ticket_attachments [not null]
+  escalations ticket_escalations [not null]
+  relatedTickets ticket_relations [not null]
+  parentTickets ticket_relations [not null]
+  notifications notifications [not null]
+  feedback ticket_feedback
+}
+
+Table ticket_comments {
+  id Int [pk, increment]
+  ticketId Int [not null]
+  ticket tickets [not null]
+  authorId Int [not null]
+  author users [not null]
+  content String [not null]
+  isInternal Boolean [not null, default: false]
+  attachments String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table ticket_activities {
+  id Int [pk, increment]
+  ticketId Int [not null]
+  ticket tickets [not null]
+  userId Int [not null]
+  user users [not null]
+  action String [not null]
+  description String [not null]
+  oldValue String
+  newValue String
+  metadata String
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table ticket_attachments {
+  id Int [pk, increment]
+  ticketId Int [not null]
+  ticket tickets [not null]
+  filename String [not null]
+  originalName String [not null]
+  mimeType String [not null]
+  size Int [not null]
+  path String [not null]
+  uploadedById Int [not null]
+  uploadedBy users [not null]
+  description String
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table ticket_escalations {
+  id Int [pk, increment]
+  ticketId Int [not null]
+  ticket tickets [not null]
+  fromUserId Int [not null]
+  fromUser users [not null]
+  toUserId Int [not null]
+  toUser users [not null]
+  reason String [not null]
+  notes String
+  escalatedAt DateTime [default: `now()`, not null]
+  acknowledgedAt DateTime
+}
+
+Table ticket_relations {
+  id Int [pk, increment]
+  parentTicketId Int [not null]
+  parentTicket tickets [not null]
+  relatedTicketId Int [not null]
+  relatedTicket tickets [not null]
+  relationType String [not null]
+  createdAt DateTime [default: `now()`, not null]
+
+  indexes {
+    (parentTicketId, relatedTicketId) [unique]
+  }
+}
+
+Table departments {
+  id Int [pk, increment]
+  name String [unique, not null]
+  description String
+  code String [unique]
+  parentId Int
+  parent departments
+  children departments [not null]
+  headId Int
+  head users
+  phone String
+  email String
+  location String
+  autoAssign Boolean [not null, default: false]
+  slaHours Int
+  createdById Int [not null]
+  createdBy users [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  tickets tickets [not null]
+  members department_members [not null]
+  categories categories [not null]
+}
+
+Table department_members {
+  id Int [pk, increment]
+  departmentId Int [not null]
+  department departments [not null]
+  userId Int [not null]
+  user users [not null]
+  role String
+  joinedAt DateTime [default: `now()`, not null]
+  leftAt DateTime
+
+  indexes {
+    (departmentId, userId) [unique]
+  }
+}
+
+Table categories {
+  id Int [pk, increment]
+  name String [not null]
+  description String
+  color String
+  icon String
+  parentId Int
+  parent categories
+  children categories [not null]
+  departmentId Int
+  department departments
+  autoAssignTo Int
+  slaHours Int
+  isActive Boolean [not null, default: true]
+  createdById Int [not null]
+  createdBy users [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  tickets tickets [not null]
+
+  indexes {
+    (name, departmentId) [unique]
+  }
+}
+
+Table labels {
+  id Int [pk, increment]
+  name String [unique, not null]
+  description String
+  color String [not null]
+  icon String
+  type String [not null, default: 'GENERAL']
+  isSystem Boolean [not null, default: false]
+  createdById Int [not null]
+  createdBy users [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  ticketLabels ticket_labels [not null]
+  userLabels user_labels [not null]
+}
+
+Table ticket_labels {
+  id Int [pk, increment]
+  ticketId Int [not null]
+  ticket tickets [not null]
+  labelId Int [not null]
+  label labels [not null]
+  addedAt DateTime [default: `now()`, not null]
+  addedById Int [not null]
+  addedBy users [not null]
+
+  indexes {
+    (ticketId, labelId) [unique]
+  }
+}
+
+Table user_labels {
+  id Int [pk, increment]
+  userId Int [not null]
+  user users [not null]
+  labelId Int [not null]
+  label labels [not null]
+  addedAt DateTime [default: `now()`, not null]
+
+  indexes {
+    (userId, labelId) [unique]
+  }
+}
+
+Table notifications {
+  id Int [pk, increment]
+  userId Int [not null]
+  user users [not null]
+  type String [not null]
+  title String [not null]
+  message String [not null]
+  data String
+  isRead Boolean [not null, default: false]
+  readAt DateTime
+  channels String [not null]
+  sentAt DateTime
+  deliveredAt DateTime
+  failedAt DateTime
+  errorMessage String
+  ticketId Int
+  relatedTicket tickets
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table audit_logs {
+  id Int [pk, increment]
+  userId Int [not null]
+  user users [not null]
+  action String [not null]
+  resource String [not null]
+  resourceId String [not null]
+  oldValues String
+  newValues String
+  ipAddress String
+  userAgent String
+  metadata String
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table user_sessions {
+  id String [pk]
+  userId Int [not null]
+  user users [not null]
+  token String [unique, not null]
+  deviceId String
+  deviceName String
+  ipAddress String
+  userAgent String
+  isActive Boolean [not null, default: true]
+  lastUsedAt DateTime [default: `now()`, not null]
+  expiresAt DateTime [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table permissions {
+  id Int [pk, increment]
+  name String [unique, not null]
+  description String
+  resource String [not null]
+  action String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  userPermissions user_permissions [not null]
+}
+
+Table user_permissions {
+  id Int [pk, increment]
+  userId Int [not null]
+  user users [not null]
+  permissionId Int [not null]
+  permission permissions [not null]
+  grantedById Int [not null]
+  grantedBy users [not null]
+  grantedAt DateTime [default: `now()`, not null]
+  expiresAt DateTime
+
+  indexes {
+    (userId, permissionId) [unique]
+  }
+}
+
+Table system_settings {
+  id Int [pk, increment]
+  key String [unique, not null]
+  value String [not null]
+  description String
+  type String [not null, default: 'string']
+  category String
+  isPublic Boolean [not null, default: false]
+  updatedById Int
+  updatedBy users
+  updatedAt DateTime [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table ticket_metrics {
+  id Int [pk, increment]
+  date DateTime [unique, not null]
+  totalCreated Int [not null, default: 0]
+  totalResolved Int [not null, default: 0]
+  totalClosed Int [not null, default: 0]
+  avgResolutionTime Float
+  avgFirstResponseTime Float
+  customerSatisfaction Float
+  criticalCount Int [not null, default: 0]
+  highCount Int [not null, default: 0]
+  mediumCount Int [not null, default: 0]
+  lowCount Int [not null, default: 0]
+  complaintCount Int [not null, default: 0]
+  requestCount Int [not null, default: 0]
+  inquiryCount Int [not null, default: 0]
+  technicalCount Int [not null, default: 0]
+  slaMetPercent Float
+  overdueCount Int [not null, default: 0]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table user_metrics {
+  id Int [pk, increment]
+  userId Int [not null]
+  user users [not null]
+  date DateTime [not null]
+  ticketsAssigned Int [not null, default: 0]
+  ticketsResolved Int [not null, default: 0]
+  avgResolutionTime Float
+  customerRating Float
+  activeHours Float
+
+  indexes {
+    (userId, date) [unique]
+  }
+}
+
+Table ticket_feedback {
+  id Int [pk, increment]
+  ticketId Int [unique, not null]
+  ticket tickets [not null]
+  rating Int [not null]
+  comment String
+  wouldRecommend Boolean
+  tags String
+  submittedAt DateTime [default: `now()`, not null]
+}
+
+Table knowledge_articles {
+  id Int [pk, increment]
+  title String [not null]
+  content String [not null]
+  summary String
+  category String
+  tags String
+  isPublished Boolean [not null, default: false]
+  viewCount Int [not null, default: 0]
+  helpful Int [not null, default: 0]
+  notHelpful Int [not null, default: 0]
+  authorId Int [not null]
+  author users [not null]
+  publishedAt DateTime
+  lastReviewAt DateTime
+  reviewedById Int
+  reviewedBy users
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Ref: users.managerId - users.id
+
+Ref: tickets.authorId > users.id
+
+Ref: tickets.assigneeId > users.id
+
+Ref: tickets.categoryId > categories.id
+
+Ref: tickets.departmentId > departments.id
+
+Ref: tickets.resolvedById > users.id
+
+Ref: ticket_comments.ticketId > tickets.id [delete: Cascade]
+
+Ref: ticket_comments.authorId > users.id
+
+Ref: ticket_activities.ticketId > tickets.id [delete: Cascade]
+
+Ref: ticket_activities.userId > users.id
+
+Ref: ticket_attachments.ticketId > tickets.id [delete: Cascade]
+
+Ref: ticket_attachments.uploadedById > users.id
+
+Ref: ticket_escalations.ticketId > tickets.id [delete: Cascade]
+
+Ref: ticket_escalations.fromUserId > users.id
+
+Ref: ticket_escalations.toUserId > users.id
+
+Ref: ticket_relations.parentTicketId > tickets.id [delete: Cascade]
+
+Ref: ticket_relations.relatedTicketId > tickets.id [delete: Cascade]
+
+Ref: departments.parentId - departments.id
+
+Ref: departments.headId > users.id
+
+Ref: departments.createdById > users.id
+
+Ref: department_members.departmentId > departments.id [delete: Cascade]
+
+Ref: department_members.userId > users.id [delete: Cascade]
+
+Ref: categories.parentId - categories.id
+
+Ref: categories.departmentId > departments.id
+
+Ref: categories.createdById > users.id
+
+Ref: labels.createdById > users.id
+
+Ref: ticket_labels.ticketId > tickets.id [delete: Cascade]
+
+Ref: ticket_labels.labelId > labels.id [delete: Cascade]
+
+Ref: ticket_labels.addedById > users.id
+
+Ref: user_labels.userId > users.id [delete: Cascade]
+
+Ref: user_labels.labelId > labels.id [delete: Cascade]
+
+Ref: notifications.userId > users.id [delete: Cascade]
+
+Ref: notifications.ticketId > tickets.id
+
+Ref: audit_logs.userId > users.id
+
+Ref: user_sessions.userId > users.id [delete: Cascade]
+
+Ref: user_permissions.userId > users.id [delete: Cascade]
+
+Ref: user_permissions.permissionId > permissions.id [delete: Cascade]
+
+Ref: user_permissions.grantedById > users.id [delete: Cascade]
+
+Ref: system_settings.updatedById > users.id
+
+Ref: user_metrics.userId > users.id
+
+Ref: ticket_feedback.ticketId - tickets.id [delete: Cascade]
+
+Ref: knowledge_articles.authorId > users.id
+
+Ref: knowledge_articles.reviewedById > users.id

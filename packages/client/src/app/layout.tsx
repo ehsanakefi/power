@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import { Inter, Vazirmatn } from 'next/font/google';
-import './globals.css';
+// import './globals.css';
+import './styles/globals.css';
+import './adminstyles/globals.css';
+import './customerstyles/globals.css';
+import './index.css';
 import ThemeRegistry from '@/theme/ThemeRegistry';
 import { QueryProvider } from '@/lib/queryClient';
 import { AuthProvider } from '@/providers/AuthProvider';
@@ -43,6 +47,7 @@ export default function RootLayout({
       <body className={`${vazirmatn.className} ${inter.className}`}>
         <ThemeRegistry>
           <QueryProvider>
+
             <AuthProvider>
               {children}
             </AuthProvider>

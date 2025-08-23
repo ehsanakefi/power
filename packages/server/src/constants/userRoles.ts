@@ -6,6 +6,7 @@ export const UserRole = {
   EMPLOYEE: 'EMPLOYEE',
   MANAGER: 'MANAGER',
   ADMIN: 'ADMIN',
+  SUPER_ADMIN: 'SUPER_ADMIN',
 } as const;
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
@@ -16,6 +17,7 @@ export const ROLE_HIERARCHY: Record<string, number> = {
   [UserRole.EMPLOYEE]: 2,
   [UserRole.MANAGER]: 3,
   [UserRole.ADMIN]: 4,
+  [UserRole.SUPER_ADMIN]: 5,
 };
 
 // Helper functions for role checking

@@ -25,11 +25,11 @@ export function middleware(request: NextRequest) {
                 request.headers.get('authorization')?.replace('Bearer ', '');
 
   // If it's a protected route and there's no token, redirect to login
-  if (isProtectedRoute && !token) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
+  // if (isProtectedRoute && !token) {
+  //   const loginUrl = new URL('/login', request.url);
+  //   loginUrl.searchParams.set('redirect', pathname);
+  //   return NextResponse.redirect(loginUrl);
+  // }
 
   // If user is authenticated and tries to access login page, redirect to dashboard
   if (isPublicRoute && token && pathname === '/login') {

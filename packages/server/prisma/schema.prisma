@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Advanced Prisma Schema for Power CRM
+// Supporting comprehensive customer relationship management for power distribution company
 
 generator client {
   provider = "prisma-client-js"
@@ -10,43 +10,638 @@ datasource db {
   url      = "file:./dev.db"
 }
 
+// ================================
+// User Management & Authentication
+// ================================
+
 model User {
-  id        Int       @id @default(autoincrement())
-  phone     String    @unique
-  role      String    @default("CLIENT")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  tickets   Ticket[]
+  id              Int       @id @default(autoincrement())
+  phone           String    @unique
+  name            String?
+  email           String?   @unique
+  role            String    @default("CLIENT")
+  status          String    @default("ACTIVE")
+  profileImage    String?
+  department      String?
+  position        String?
+  employeeId      String?   @unique
+  nationalId      String?   @unique // National ID number
+
+  // Authentication fields
+  passwordHash    String?
+  lastLoginAt     DateTime?
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  twoFactorEnabled Boolean  @default(false)
+
+  // Organizational hierarchy
+  managerId       Int?
+  manager         User?     @relation("UserManager", fields: [managerId], references: [id])
+  subordinates    User[]    @relation("UserManager")
+
+  // Metadata
+  metadata        String?     // JSON string for flexible storage
+  preferences     String?     // JSON string for user preferences
+
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  authoredTickets         Ticket[]           @relation("TicketAuthor")
+  assignedTickets         Ticket[]           @relation("TicketAssignee")
+  ticketComments          TicketComment[]
+  ticketActivities        TicketActivity[]
+  notifications           Notification[]
+  auditLogs              AuditLog[]
+  sessions               UserSession[]
+  userLabels             UserLabel[]
+  userPermissions        UserPermission[]
+  createdLabels          Label[]            @relation("LabelCreatedBy")
+  createdCategories      Category[]         @relation("CategoryCreatedBy")
+  createdDepartments     Department[]       @relation("DepartmentCreatedBy")
+  departmentMemberships  DepartmentMember[]
+
+  // Additional relations for missing opposite fields
+  resolvedTickets        Ticket[]           @relation("TicketResolvedBy")
+  uploadedAttachments    TicketAttachment[] @relation("AttachmentUploadedBy")
+  escalationsFrom        TicketEscalation[] @relation("EscalationFrom")
+  escalationsTo          TicketEscalation[] @relation("EscalationTo")
+  headedDepartments      Department[]       @relation("DepartmentHead")
+  addedTicketLabels      TicketLabel[]      @relation("TicketLabelAddedBy")
+  grantedPermissions     UserPermission[]   @relation("PermissionGrantedBy")
+  updatedSettings        SystemSetting[]    @relation("SettingUpdatedBy")
+  userMetrics            UserMetrics[]      @relation("UserMetrics")
+  authoredArticles       KnowledgeArticle[] @relation("ArticleAuthor")
+  reviewedArticles       KnowledgeArticle[] @relation("ArticleReviewedBy")
 
   @@map("users")
+  @@index([phone])
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([managerId])
 }
 
+
+
+// ================================
+// Ticket Management System
+// ================================
+
 model Ticket {
+  id              Int           @id @default(autoincrement())
+  ticketNumber    String        @unique // Auto-generated ticket number
+  title           String
+  description     String
+  status          String        @default("OPEN")
+  priority        String        @default("MEDIUM")
+  type            String        @default("COMPLAINT")
+  source          String        @default("PHONE")
+
+  // Assignment
+  authorId        Int
+  author          User          @relation("TicketAuthor", fields: [authorId], references: [id])
+  assigneeId      Int?
+  assignee        User?         @relation("TicketAssignee", fields: [assigneeId], references: [id])
+
+  // Categorization
+  categoryId      Int?
+  category        Category?     @relation(fields: [categoryId], references: [id])
+  departmentId    Int?
+  department      Department?   @relation(fields: [departmentId], references: [id])
+
+  // Customer information
+  customerName    String?
+  customerPhone   String?
+  customerEmail   String?
+  customerAddress String?
+  customerArea    String?
+  meterNumber     String?
+  accountNumber   String?
+
+  // Resolution
+  resolution      String?
+  resolutionNotes String?
+  resolvedAt      DateTime?
+  resolvedById    Int?
+  resolvedBy      User?         @relation("TicketResolvedBy", fields: [resolvedById], references: [id])
+
+  // SLA and timing
+  dueDate         DateTime?
+  estimatedHours  Float?
+  actualHours     Float?
+  firstResponseAt DateTime?
+
+  // Metadata
+  metadata        String?       // JSON string for additional flexible data storage
+  tags            String        // Comma-separated tags
+  attachmentCount Int          @default(0)
+
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  comments        TicketComment[]
+  activities      TicketActivity[]
+  labels          TicketLabel[]
+  attachments     TicketAttachment[]
+  escalations     TicketEscalation[]
+  relatedTickets  TicketRelation[] @relation("ParentTicket")
+  parentTickets   TicketRelation[] @relation("RelatedTicket")
+
+  // Additional relations for missing opposite fields
+  notifications   Notification[]   @relation("NotificationTicket")
+  feedback        TicketFeedback?  @relation("TicketFeedback")
+
+  @@map("tickets")
+  @@index([ticketNumber])
+  @@index([status])
+  @@index([priority])
+  @@index([type])
+  @@index([authorId])
+  @@index([assigneeId])
+  @@index([categoryId])
+  @@index([departmentId])
+  @@index([customerPhone])
+  @@index([meterNumber])
+  @@index([createdAt])
+}
+
+
+
+// ================================
+// Ticket Related Models
+// ================================
+
+model TicketComment {
   id          Int       @id @default(autoincrement())
-  title       String
-  content     String
-  status      String    @default("unseen")
+  ticketId    Int
+  ticket      Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   authorId    Int
   author      User      @relation(fields: [authorId], references: [id])
-  history     Log[]
+  content     String
+  isInternal  Boolean   @default(false) // Internal comment (not visible to customer)
+  attachments String?   // JSON string of attachment references
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@map("tickets")
+  @@map("ticket_comments")
+  @@index([ticketId])
+  @@index([authorId])
 }
 
-model Log {
-  id        Int       @id @default(autoincrement())
-  ticketId  Int
-  ticket    Ticket    @relation(fields: [ticketId], references: [id])
-  before    String    // وضعیت قبلی
-  after     String    // وضعیت جدید
-  changes   String    // تغییرات اعمال شده
-  user      String    // کاربری که تغییر را ایجاد کرده
-  createdAt DateTime  @default(now())
+model TicketActivity {
+  id          Int           @id @default(autoincrement())
+  ticketId    Int
+  ticket      Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User          @relation(fields: [userId], references: [id])
+  action      String
+  description String
+  oldValue    String?
+  newValue    String?
+  metadata    String?
+  createdAt   DateTime      @default(now())
 
-  @@map("logs")
+  @@map("ticket_activities")
+  @@index([ticketId])
+  @@index([userId])
+  @@index([action])
 }
 
-// UserRole enum values: CLIENT, EMPLOYEE, MANAGER, ADMIN
-// Using String type instead of enum for SQLite compatibility
+model TicketAttachment {
+  id          Int       @id @default(autoincrement())
+  ticketId    Int
+  ticket      Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  path        String
+  uploadedById Int
+  uploadedBy  User      @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id])
+  description String?
+  createdAt   DateTime  @default(now())
+
+  @@map("ticket_attachments")
+  @@index([ticketId])
+}
+
+model TicketEscalation {
+  id            Int       @id @default(autoincrement())
+  ticketId      Int
+  ticket        Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromUserId    Int
+  fromUser      User      @relation("EscalationFrom", fields: [fromUserId], references: [id])
+  toUserId      Int
+  toUser        User      @relation("EscalationTo", fields: [toUserId], references: [id])
+  reason        String
+  notes         String?
+  escalatedAt   DateTime  @default(now())
+  acknowledgedAt DateTime?
+
+  @@map("ticket_escalations")
+  @@index([ticketId])
+}
+
+model TicketRelation {
+  id              Int           @id @default(autoincrement())
+  parentTicketId  Int
+  parentTicket    Ticket        @relation("ParentTicket", fields: [parentTicketId], references: [id], onDelete: Cascade)
+  relatedTicketId Int
+  relatedTicket   Ticket        @relation("RelatedTicket", fields: [relatedTicketId], references: [id], onDelete: Cascade)
+  relationType    String
+  createdAt       DateTime      @default(now())
+
+  @@map("ticket_relations")
+  @@unique([parentTicketId, relatedTicketId])
+}
+
+
+
+// ================================
+// Organization Structure
+// ================================
+
+model Department {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  code        String?   @unique
+  parentId    Int?
+  parent      Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children    Department[] @relation("DepartmentHierarchy")
+  headId      Int?
+  head        User?     @relation("DepartmentHead", fields: [headId], references: [id])
+
+  // Contact information
+  phone       String?
+  email       String?
+  location    String?
+
+  // Settings
+  autoAssign  Boolean   @default(false)
+  slaHours    Int?      // Default SLA in hours
+
+  // Metadata
+  createdById Int
+  createdBy   User      @relation("DepartmentCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tickets     Ticket[]
+  members     DepartmentMember[]
+  categories  Category[]
+
+  @@map("departments")
+  @@index([code])
+  @@index([parentId])
+}
+
+model DepartmentMember {
+  id           Int       @id @default(autoincrement())
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         String?   // Role within the department
+  joinedAt     DateTime  @default(now())
+  leftAt       DateTime?
+
+  @@map("department_members")
+  @@unique([departmentId, userId])
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  color       String?   // Hex color code for UI
+  icon        String?   // Icon identifier
+  parentId    Int?
+  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+
+  // Settings
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  autoAssignTo Int?
+  slaHours     Int?
+  isActive     Boolean   @default(true)
+
+  // Metadata
+  createdById Int
+  createdBy   User      @relation("CategoryCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tickets     Ticket[]
+
+  @@map("categories")
+  @@unique([name, departmentId])
+  @@index([parentId])
+}
+
+// ================================
+// Labels and Tags System
+// ================================
+
+model Label {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  color       String    // Hex color code
+  icon        String?
+  type        String    @default("GENERAL")
+  isSystem    Boolean   @default(false) // System labels cannot be deleted
+
+  // Metadata
+  createdById Int
+  createdBy   User      @relation("LabelCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  ticketLabels TicketLabel[]
+  userLabels   UserLabel[]
+
+  @@map("labels")
+}
+
+
+
+model TicketLabel {
+  id       Int    @id @default(autoincrement())
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  labelId  Int
+  label    Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  addedAt  DateTime @default(now())
+  addedById Int
+  addedBy  User   @relation("TicketLabelAddedBy", fields: [addedById], references: [id])
+
+  @@map("ticket_labels")
+  @@unique([ticketId, labelId])
+}
+
+model UserLabel {
+  id      Int   @id @default(autoincrement())
+  userId  Int
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  labelId Int
+  label   Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  addedAt DateTime @default(now())
+
+  @@map("user_labels")
+  @@unique([userId, labelId])
+}
+
+// ================================
+// Notifications System
+// ================================
+
+model Notification {
+  id          Int              @id @default(autoincrement())
+  userId      Int
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  title       String
+  message     String
+  data        String?          // JSON string for additional data
+
+  // Status
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+
+  // Delivery
+  channels    String           // Comma-separated: email,sms,push,in_app
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  failedAt    DateTime?
+  errorMessage String?
+
+  // References
+  ticketId    Int?
+  relatedTicket Ticket?        @relation("NotificationTicket", fields: [ticketId], references: [id])
+
+  createdAt   DateTime         @default(now())
+
+  @@map("notifications")
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+}
+
+
+
+// ================================
+// Audit and Security
+// ================================
+
+model AuditLog {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  action      String    // Action performed
+  resource    String    // Resource affected (table name)
+  resourceId  String    // ID of the affected resource
+  oldValues   String?   // JSON string of previous values
+  newValues   String?   // JSON string of new values
+  ipAddress   String?
+  userAgent   String?
+  metadata    String?   // JSON string for additional context
+  createdAt   DateTime  @default(now())
+
+  @@map("audit_logs")
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}
+
+model UserSession {
+  id          String    @id @default(cuid())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token       String    @unique
+  deviceId    String?
+  deviceName  String?
+  ipAddress   String?
+  userAgent   String?
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime  @default(now())
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@map("user_sessions")
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ================================
+// Permissions and Roles
+// ================================
+
+model Permission {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  resource    String    // Resource this permission applies to
+  action      String    // Action allowed (create, read, update, delete, etc.)
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  userPermissions UserPermission[]
+
+  @@map("permissions")
+  @@index([resource])
+}
+
+model UserPermission {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  grantedById  Int
+  grantedBy    User       @relation("PermissionGrantedBy", fields: [grantedById], references: [id])
+  grantedAt    DateTime   @default(now())
+  expiresAt    DateTime?
+
+  @@map("user_permissions")
+  @@unique([userId, permissionId])
+}
+
+// ================================
+// System Configuration
+// ================================
+
+model SystemSetting {
+  id          Int       @id @default(autoincrement())
+  key         String    @unique
+  value       String
+  description String?
+  type        String    @default("string") // string, number, boolean, json
+  category    String?   // Group related settings
+  isPublic    Boolean   @default(false)   // Whether this setting can be read by non-admins
+  updatedById Int?
+  updatedBy   User?     @relation("SettingUpdatedBy", fields: [updatedById], references: [id])
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+
+  @@map("system_settings")
+  @@index([category])
+}
+
+// ================================
+// Analytics and Reporting
+// ================================
+
+model TicketMetrics {
+  id                    Int      @id @default(autoincrement())
+  date                  DateTime @unique
+  totalCreated          Int      @default(0)
+  totalResolved         Int      @default(0)
+  totalClosed           Int      @default(0)
+  avgResolutionTime     Float?   // in hours
+  avgFirstResponseTime  Float?   // in hours
+  customerSatisfaction  Float?   // average rating
+
+  // By priority
+  criticalCount         Int      @default(0)
+  highCount            Int      @default(0)
+  mediumCount          Int      @default(0)
+  lowCount             Int      @default(0)
+
+  // By type
+  complaintCount       Int      @default(0)
+  requestCount         Int      @default(0)
+  inquiryCount         Int      @default(0)
+  technicalCount       Int      @default(0)
+
+  // SLA metrics
+  slaMetPercent        Float?
+  overdueCount         Int      @default(0)
+
+  createdAt            DateTime @default(now())
+
+  @@map("ticket_metrics")
+  @@index([date])
+}
+
+model UserMetrics {
+  id                   Int      @id @default(autoincrement())
+  userId               Int
+  user                 User     @relation("UserMetrics", fields: [userId], references: [id])
+  date                 DateTime
+  ticketsAssigned      Int      @default(0)
+  ticketsResolved      Int      @default(0)
+  avgResolutionTime    Float?   // in hours
+  customerRating       Float?   // average rating from customers
+  activeHours          Float?   // hours active in system
+
+  @@map("user_metrics")
+  @@unique([userId, date])
+  @@index([date])
+}
+
+// ================================
+// Customer Feedback
+// ================================
+
+model TicketFeedback {
+  id          Int       @id @default(autoincrement())
+  ticketId    Int       @unique
+  ticket      Ticket    @relation("TicketFeedback", fields: [ticketId], references: [id], onDelete: Cascade)
+  rating      Int       // 1-5 rating
+  comment     String?
+  wouldRecommend Boolean?
+  tags        String?   // Comma-separated feedback tags
+  submittedAt DateTime  @default(now())
+
+  @@map("ticket_feedback")
+}
+
+// ================================
+// Knowledge Base
+// ================================
+
+model KnowledgeArticle {
+  id          Int       @id @default(autoincrement())
+  title       String
+  content     String
+  summary     String?
+  category    String?
+  tags        String?   // Comma-separated tags
+  isPublished Boolean   @default(false)
+  viewCount   Int       @default(0)
+  helpful     Int       @default(0)
+  notHelpful  Int       @default(0)
+
+  // Authoring
+  authorId    Int
+  author      User      @relation("ArticleAuthor", fields: [authorId], references: [id])
+
+  // Publishing
+  publishedAt DateTime?
+  lastReviewAt DateTime?
+  reviewedById Int?
+  reviewedBy   User?     @relation("ArticleReviewedBy", fields: [reviewedById], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("knowledge_articles")
+  @@index([category])
+  @@index([isPublished])
+}
+generator dbml {
+  provider = "prisma-dbml-generator"
+}

@@ -1,7 +1,7 @@
 'use client';
 
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -19,125 +19,16 @@ import {
   FileText,
   ArrowRight,
   Clock,
-  Search
+  Search,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
+import { HistoryService, mockHistoryData, HistoryEntry } from '../../../services/historyService';
+import { getUserProfile, UserProfile } from '../../../lib/api/profile';
+import { toast } from 'sonner';
 
-interface HistoryEntry {
-  id: string;
-  taskId: string;
-  taskTitle: string;
-  action: 'created' | 'status_changed' | 'assigned' | 'comment_added' | 'file_attached' | 'updated';
-  user: {
-    name: string;
-    avatar?: string;
-    role: string;
-  };
-  timestamp: string;
-  changes?: {
-    field: string;
-    from: string;
-    to: string;
-  }[];
-  comment?: string;
-  details: string;
-}
 
-const mockHistoryData: HistoryEntry[] = [
-  {
-    id: 'H-001',
-    taskId: 'T-001',
-    taskTitle: 'قطع برق منطقه شهرک صدرا',
-    action: 'created',
-    user: {
-      name: 'سیستم خودکار',
-      role: 'سیستم'
-    },
-    timestamp: '1403/02/10 - 09:15',
-    details: 'وظیفه جدید از طریق SMS ایجاد شد'
-  },
-  {
-    id: 'H-002',
-    taskId: 'T-001',
-    taskTitle: 'قطع برق منطقه شهرک صدرا',
-    action: 'assigned',
-    user: {
-      name: 'مدیر سیستم',
-      role: 'مدیر'
-    },
-    timestamp: '1403/02/10 - 09:30',
-    changes: [
-      {
-        field: 'مسئول',
-        from: 'تعیین نشده',
-        to: 'احمد محمدی'
-      }
-    ],
-    details: 'وظیفه به احمد محمدی واگذار شد'
-  },
-  {
-    id: 'H-003',
-    taskId: 'T-002',
-    taskTitle: 'درخواست انشعاب جدید',
-    action: 'status_changed',
-    user: {
-      name: 'فاطمه احمدی',
-      role: 'کارشناس'
-    },
-    timestamp: '1403/02/12 - 14:20',
-    changes: [
-      {
-        field: 'وضعیت',
-        from: 'دیده نشده',
-        to: 'در حال انجام'
-      }
-    ],
-    details: 'وضعیت وظیفه به "در حال انجام" تغییر یافت'
-  },
-  {
-    id: 'H-004',
-    taskId: 'T-002',
-    taskTitle: 'درخواست انشعاب جدید',
-    action: 'comment_added',
-    user: {
-      name: 'فاطمه احمدی',
-      role: 'کارشناس'
-    },
-    timestamp: '1403/02/12 - 14:30',
-    comment: 'بررسی اولیه انجام شد. منتظر تایید مدیریت هستیم.',
-    details: 'نظر جدید اضافه شد'
-  },
-  {
-    id: 'H-005',
-    taskId: 'T-003',
-    taskTitle: 'نوسان ولتاژ در منطقه میدان انقلاب',
-    action: 'status_changed',
-    user: {
-      name: 'علی رضایی',
-      role: 'تکنسین'
-    },
-    timestamp: '1403/02/14 - 16:45',
-    changes: [
-      {
-        field: 'وضعیت',
-        from: 'در حال انجام',
-        to: 'انجام شده'
-      }
-    ],
-    details: 'مشکل نوسان ولتاژ برطرف شد'
-  },
-  {
-    id: 'H-006',
-    taskId: 'T-001',
-    taskTitle: 'قطع برق منطقه شهرک صدرا',
-    action: 'file_attached',
-    user: {
-      name: 'احمد محمدی',
-      role: 'کارشناس'
-    },
-    timestamp: '1403/02/14 - 11:20',
-    details: 'فایل گزارش فنی به وظیفه پیوست شد'
-  }
-];
+
 
 const actionIcons = {
   created: <FileText className="w-4 h-4" />,
@@ -171,8 +62,80 @@ export default function History() {
   const [filterAction, setFilterAction] = useState<string>('همه');
   const [filterUser, setFilterUser] = useState<string>('همه');
   const [selectedTaskId, setSelectedTaskId] = useState<string>('همه');
+  const [historyData, setHistoryData] = useState<HistoryEntry[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [usingMockData, setUsingMockData] = useState<boolean>(true);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 
-  const filteredHistory = mockHistoryData.filter(entry => {
+  // Load current user profile
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const profile = await getUserProfile();
+        setCurrentUser(profile);
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        toast.error('خطا در بارگذاری اطلاعات کاربر');
+      }
+    };
+
+    loadUserProfile();
+  }, []);
+
+  // Fetch combined history data for assigned tickets only
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const fetchHistory = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Try to get combined history from API - filter by assigned tickets
+        const result = await HistoryService.getAllHistory({
+          page: 1,
+          limit: 100, // Get more entries for manager view
+          assignedToUserId: currentUser.id // Filter by tickets assigned to current user
+        });
+
+        if (result.history && result.history.length > 0) {
+          setHistoryData(result.history);
+          setUsingMockData(false);
+        } else {
+          // No real data available, use filtered mock data
+          const filteredMockData = mockHistoryData.filter(entry =>
+            // In real scenario, we'd filter by assigned tickets
+            // For mock data, we'll show all for demo purposes
+            true
+          );
+          setHistoryData(filteredMockData);
+          setUsingMockData(true);
+          setError('هنوز هیچ فعالیتی برای تیکت‌های واگذار شده به شما ثبت نشده است. داده‌های نمونه نمایش داده می‌شوند.');
+        }
+      } catch (err) {
+        console.error('Failed to fetch history:', err);
+        const errorMessage = (err as any)?.response?.status === 401
+          ? 'لطفاً وارد سیستم شوید.'
+          : 'خطا در اتصال به سرور. از داده‌های نمونه استفاده می‌شود.';
+        setError(errorMessage);
+
+        // Fallback to mock data
+        const filteredMockData = mockHistoryData.filter(entry =>
+          // Filter mock data to simulate assigned tickets
+          true
+        );
+        setHistoryData(filteredMockData);
+        setUsingMockData(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [currentUser]);
+
+  const filteredHistory = historyData.filter(entry => {
     const matchesSearch = entry.taskTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          entry.taskId.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          entry.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -185,16 +148,125 @@ export default function History() {
     return matchesSearch && matchesAction && matchesUser && matchesTask;
   });
 
-  const uniqueUsers = [...new Set(mockHistoryData.map(entry => entry.user.name))];
-  const uniqueTasks = [...new Set(mockHistoryData.map(entry => ({ id: entry.taskId, title: entry.taskTitle })))];
+  const uniqueUsers = [...new Set(historyData.map(entry => entry.user.name))];
+  const uniqueTasks = [...new Set(historyData.map(entry => ({ id: entry.taskId, title: entry.taskTitle })))];
+
+  const refreshHistory = async () => {
+    if (!currentUser) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await HistoryService.getAllHistory({
+        page: 1,
+        limit: 100,
+        assignedToUserId: currentUser.id
+      });
+
+      if (result.history && result.history.length > 0) {
+        setHistoryData(result.history);
+        setUsingMockData(false);
+        toast.success('تاریخچه با موفقیت به‌روزرسانی شد');
+      } else {
+        const filteredMockData = mockHistoryData.filter(entry => true);
+        setHistoryData(filteredMockData);
+        setUsingMockData(true);
+        setError('هنوز هیچ فعالیتی برای تیکت‌های واگذار شده به شما ثبت نشده است.');
+      }
+    } catch (err) {
+      console.error('Failed to refresh history:', err);
+      const errorMessage = (err as any)?.response?.status === 401
+        ? 'لطفاً مجدداً وارد سیستم شوید.'
+        : 'خطا در به‌روزرسانی تاریخچه. لطفاً مجدداً تلاش کنید.';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading || !currentUser) {
+    return (
+      <div className="flex items-center justify-center h-64" dir="rtl">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">در حال بارگذاری تاریخچه...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <div className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <HistoryIcon className="w-5 h-5" />
-          تاریخچه و رهگیری تغییرات
-        </h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <HistoryIcon className="w-5 h-5" />
+              تاریخچه تیکت‌های واگذار شده
+              {usingMockData && (
+                <Badge variant="outline" className="text-xs">
+                  داده‌های نمونه
+                </Badge>
+              )}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              تاریخچه فعالیت‌های تیکت‌های واگذار شده به: <span className="font-medium">{currentUser?.name || currentUser?.phone}</span>
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshHistory}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            به‌روزرسانی
+          </Button>
+        </div>
+
+        {error && (
+          <div className={`border rounded-lg p-3 ${
+            error.includes('وارد سیستم')
+              ? 'bg-red-50 border-red-200'
+              : 'bg-yellow-50 border-yellow-200'
+          }`}>
+            <p className={`text-sm ${
+              error.includes('وارد سیستم')
+                ? 'text-red-800'
+                : 'text-yellow-800'
+            }`}>
+              {error}
+            </p>
+          </div>
+        )}
+
+        {loading && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <p className="text-blue-800 text-sm">در حال بارگیری تاریخچه...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Info Card */}
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                <HistoryIcon className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-blue-900 mb-1">تاریخچه تیکت‌های واگذار شده</h3>
+                <p className="text-sm text-blue-700">
+                  در این صفحه فقط تاریخچه و فعالیت‌های مربوط به تیکت‌هایی نمایش داده می‌شود که مستقیماً به شما واگذار شده‌اند.
+                  شامل تغییرات وضعیت، نظرات اضافه شده و سایر فعالیت‌های انجام شده روی این تیکت‌ها.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Search and Filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -411,8 +483,11 @@ export default function History() {
                 ))
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <HistoryIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>هیچ تاریخچه‌ای برای فیلترهای انتخابی یافت نشد</p>
+                  <HistoryIcon className="w-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>هیچ تاریخچه‌ای برای تیکت‌های واگذار شده به شما یافت نشد</p>
+                  <p className="text-xs mt-2 opacity-75">
+                    فقط فعالیت‌های مربوط به تیکت‌هایی که به شما ({currentUser?.name || currentUser?.phone}) واگذار شده‌اند نمایش داده می‌شوند
+                  </p>
                 </div>
               )}
             </div>
